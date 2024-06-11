@@ -1,2 +1,1 @@
-# EzShop-BE
-EzShop backend code form exe201
+# EzShopProject_EXE2
