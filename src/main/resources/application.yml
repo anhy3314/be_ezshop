@@ -13,8 +13,8 @@
 
 spring:
   datasource:
-    url: jdbc:sqlserver://ez-shop.database.windows.net:1433;database=EzShop;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;
-    username: CloudSA21aa3525
+    url: jdbc:sqlserver://ezshop-db.database.windows.net:1433;database=ezshop;encrypt=true;trustServerCertificate=false;hostNameInCertificate=*.database.windows.net;loginTimeout=30;
+    username: user
     password: AnHy221202
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
   jpa:
