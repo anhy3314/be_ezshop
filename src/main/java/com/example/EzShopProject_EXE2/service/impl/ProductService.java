@@ -1,22 +1,22 @@
 package com.example.EzShopProject_EXE2.service.impl;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.example.EzShopProject_EXE2.dto.CategoryDto;
 import com.example.EzShopProject_EXE2.dto.ProductDto;
-import com.example.EzShopProject_EXE2.dto.ShopDto;
-import com.example.EzShopProject_EXE2.dto.TitleDto;
 import com.example.EzShopProject_EXE2.exception.DataNotFoundException;
 import com.example.EzShopProject_EXE2.model.Category;
 import com.example.EzShopProject_EXE2.model.Product;
 import com.example.EzShopProject_EXE2.model.Shop;
-import com.example.EzShopProject_EXE2.model.Title;
 import com.example.EzShopProject_EXE2.repository.CategoryRepository;
 import com.example.EzShopProject_EXE2.repository.ProductRepository;
 import com.example.EzShopProject_EXE2.repository.ShopRepository;
-import com.example.EzShopProject_EXE2.repository.TitleRepository;
 import com.example.EzShopProject_EXE2.service.IProductService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,14 +24,14 @@ import java.util.stream.Collectors;
 public class ProductService implements IProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
-    private final TitleRepository titleRepository;
     private final ShopRepository shopRepository;
+    @Autowired
+    private Cloudinary cloudinary;
 
     @Autowired
-    public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository, TitleRepository titleRepository, ShopRepository shopRepository) {
+    public ProductService(ProductRepository productRepository, CategoryRepository categoryRepository, ShopRepository shopRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
-        this.titleRepository = titleRepository;
         this.shopRepository = shopRepository;
     }
 
@@ -45,10 +45,37 @@ public class ProductService implements IProductService {
 //    }
 
     @Override
-    public ProductDto createProduct(ProductDto productDto) throws DataNotFoundException {
-        Product product = mapToEntity(productDto);
+    public ProductDto createProduct(ProductDto productDto, MultipartFile[] imageFiles,  Long shopId) throws DataNotFoundException {
+        try {
+            // Assuming imageFiles is an array and should be uploaded in sequence
+            if (imageFiles.length > 0) {
+                Map uploadResult1 = cloudinary.uploader().upload(imageFiles[0].getBytes(), ObjectUtils.emptyMap());
+                productDto.setImage(uploadResult1.get("url").toString());
+            }
+            if (imageFiles.length > 1) {
+                Map uploadResult2 = cloudinary.uploader().upload(imageFiles[1].getBytes(), ObjectUtils.emptyMap());
+                productDto.setImage2(uploadResult2.get("url").toString());
+            }
+            if (imageFiles.length > 2) {
+                Map uploadResult3 = cloudinary.uploader().upload(imageFiles[2].getBytes(), ObjectUtils.emptyMap());
+                productDto.setImage3(uploadResult3.get("url").toString());
+            }
+            if (imageFiles.length > 3) {
+                Map uploadResult4 = cloudinary.uploader().upload(imageFiles[3].getBytes(), ObjectUtils.emptyMap());
+                productDto.setImage4(uploadResult4.get("url").toString());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload image", e);
+        }
+//        List<Shop> shops = shopRepository.findByOwnerId(shopId);
+//        if (shops.isEmpty()) {
+//            throw new DataNotFoundException("Cannot find shop with owner id: " + shopId);
+//        }
+//        Shop shop = shops.get(0); // Assuming one shop per owner
 
-        // Tạo mã code cho sản phẩm nếu chưa có
+        Product product = mapToEntity(productDto,shopId);
+//        product.setShop(shop);
+        // Generate product code if not present
         if (product.getCode() == null || product.getCode().isEmpty()) {
             product.setCode(generateProductCode());
         }
@@ -56,6 +83,7 @@ public class ProductService implements IProductService {
         Product savedProduct = productRepository.save(product);
         return mapToDto(savedProduct);
     }
+
 
     @Override
     public ProductDto updateProduct(Long id, ProductDto productDto) throws Exception {
@@ -67,7 +95,6 @@ public class ProductService implements IProductService {
         existingProduct.setPrice(productDto.getPrice());
         existingProduct.setDescription(productDto.getDescription());
         existingProduct.setStatus(productDto.getStatus());
-        existingProduct.setQuantity(productDto.getQuantity());
         existingProduct.setBrand(productDto.getBrand());
         existingProduct.setWeight(productDto.getWeight());
         existingProduct.setSituation((productDto.getSituation()));
@@ -86,13 +113,7 @@ public class ProductService implements IProductService {
         }
         existingProduct.setCategories(categories);
 
-        // Cập nhật title
-        if (productDto.getTitle() != null) {
-            Title existingTitle = titleRepository.findById(productDto.getTitle().getId())
-                    .orElseThrow(() -> new DataNotFoundException(
-                            "Cannot find title with id: " + productDto.getTitle().getId()));
-            existingProduct.setTitle(existingTitle);
-        }
+
 
         // Lưu sản phẩm đã cập nhật vào cơ sở dữ liệu
         Product updatedProduct = productRepository.save(existingProduct);
@@ -168,10 +189,7 @@ public class ProductService implements IProductService {
     }
 
 
-    public List<ProductDto> getProductsByTitleId(Long titleId) {
-        List<Product> products = productRepository.findByTitleId(titleId);
-        return products.stream().map(this::mapToDto).collect(Collectors.toList());
-    }
+
     public ProductDto getProductById(Long id) {
         Optional<Product> productOptional = productRepository.findById(id);
         if (productOptional.isPresent()) {
@@ -199,7 +217,6 @@ public class ProductService implements IProductService {
         productDto.setDescription(product.getDescription());
         productDto.setCode(product.getCode());
         productDto.setStatus(product.getStatus());
-        productDto.setQuantity(product.getQuantity());
         productDto.setBrand(product.getBrand());
         productDto.setWeight(product.getWeight());
         productDto.setSituation(product.getSituation());
@@ -207,25 +224,26 @@ public class ProductService implements IProductService {
         productDto.setColor(product.getColor());
         productDto.setDetail(product.getDetail());
         productDto.setSize(product.getSize());
+        productDto.setImage2(product.getImage2());
+        productDto.setImage3(product.getImage3());
+        productDto.setImage4(product.getImage4());
         productDto.setCategories(product.getCategories().stream()
                 .map(this::mapToCategoryDto)
                 .collect(Collectors.toSet()));
+        productDto.setShopId(product.getShop().getId());
 
-        if (product.getTitle() != null) {
-            productDto.setTitle(mapToTitleDto(product.getTitle()));
-        }
+
         // Add mappings for shop and orderDetails if necessary
         return productDto;
     }
 
-    private Product mapToEntity(ProductDto productDto) throws DataNotFoundException {
+    private Product mapToEntity(ProductDto productDto,Long shopId) throws DataNotFoundException {
         Product product = Product.builder()
                 .name(productDto.getName())
                 .price(productDto.getPrice())
                 .description(productDto.getDescription())
                 .code(productDto.getCode())
                 .status(productDto.getStatus())
-                .quantity(productDto.getQuantity())
                 .brand(productDto.getBrand())
                 .weight(productDto.getWeight())
                 .situation(productDto.getSituation())
@@ -233,8 +251,16 @@ public class ProductService implements IProductService {
                 .color(productDto.getColor())
                 .detail(productDto.getDetail())
                 .size(productDto.getSize())
+                .image2(productDto.getImage2())
+                .image3(productDto.getImage3())
+                .image4(productDto.getImage4())
+                .image(productDto.getImage())
                 .build();
+        Shop shop = shopRepository.findById(shopId)
+                .orElseThrow(() -> new DataNotFoundException("Shop not found with id: " + shopId));
 
+        // Liên kết Product với Shop
+        product.setShop(shop);
         // Lấy thông tin về category
         Set<Category> categories = new HashSet<>();
         for (CategoryDto categoryDto : productDto.getCategories()) {
@@ -246,15 +272,6 @@ public class ProductService implements IProductService {
             categories.add(existingCategory);
         }
         product.setCategories(categories);
-
-        // Lấy thông tin về title
-        if (productDto.getTitle() != null) {
-            Title existingTitle = titleRepository.findById(productDto.getTitle().getId())
-                    .orElseThrow(() -> new DataNotFoundException(
-                            "Cannot find title with id: " + productDto.getTitle().getId()));
-            product.setTitle(existingTitle);
-        }
-        // Lấy thông tin về cửa hàng
 
         // Add mappings for shop and orderDetails if necessary
         return product;
@@ -272,10 +289,5 @@ public class ProductService implements IProductService {
         return categoryDto;
     }
 
-    private TitleDto mapToTitleDto(Title title) {
-        TitleDto titleDto = new TitleDto();
-        titleDto.setId(title.getId());
-        titleDto.setName(title.getName());
-        return titleDto;
-    }
+
 }

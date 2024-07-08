@@ -4,32 +4,44 @@ import com.example.EzShopProject_EXE2.dto.ProductDto;
 import com.example.EzShopProject_EXE2.exception.DataNotFoundException;
 
 import com.example.EzShopProject_EXE2.model.Product;
+import com.example.EzShopProject_EXE2.model.Shop;
+import com.example.EzShopProject_EXE2.model.User;
+import com.example.EzShopProject_EXE2.repository.ShopRepository;
+import com.example.EzShopProject_EXE2.repository.UserRepository;
 import com.example.EzShopProject_EXE2.response.ProductResponse;
 import com.example.EzShopProject_EXE2.service.IProductService;
-import jakarta.validation.Valid;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping("/guest/api/products")
+@RequestMapping("/api/products")
 @CrossOrigin
 public class ProductController {
 
     private final IProductService productService;
 
+    private final UserRepository userRepository;
+    private final ShopRepository shopRepository;
+
 
     @Autowired
-    public ProductController(IProductService productService) {
+    public ProductController(IProductService productService, UserRepository userRepository, ShopRepository shopRepository) {
         this.productService = productService;
+        this.userRepository = userRepository;
+        this.shopRepository = shopRepository;
     }
 
-//    @GetMapping("/{id}")
+    //    @GetMapping("/{id}")
 //    public ResponseEntity<Product> getProductById(@PathVariable("id") long id) {
 //        try {
 //            Product product = productService.getProductById(id);
@@ -38,11 +50,42 @@ public class ProductController {
 //            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
 //        }
 //    }
+//    @PostMapping
+//    public ResponseEntity<ProductDto> createProduct(@Valid @RequestBody ProductDto productDto) throws DataNotFoundException {
+//        ProductDto createdProduct = productService.createProduct(productDto);
+//        return new ResponseEntity<>(createdProduct, HttpStatus.CREATED);
+//    }
     @PostMapping
-    public ResponseEntity<ProductDto> createProduct(@Valid @RequestBody ProductDto productDto) throws DataNotFoundException {
-        ProductDto createdProduct = productService.createProduct(productDto);
+    public ResponseEntity<ProductDto> createProduct(
+            @RequestPart("product") String productJson,
+            @RequestPart("imageFiles") MultipartFile[] imageFiles,
+            Principal principal) throws DataNotFoundException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        ProductDto productDto;
+        try {
+            productDto = objectMapper.readValue(productJson, ProductDto.class);
+            System.out.println("Received Product Data: " + productDto.toString());
+        } catch (IOException e) {
+            throw new RuntimeException("Invalid JSON format", e);
+        }
+        for (MultipartFile file : imageFiles) {
+            System.out.println("Received Image: " + file.getOriginalFilename());
+        }
+
+        String username = principal.getName();
+        User user = userRepository.findByUserName(username)
+                .orElseThrow(() -> new DataNotFoundException("User not found"));
+
+        List<Shop> shops = shopRepository.findByOwnerId(user.getId());
+        if (shops.isEmpty()) {
+            throw new DataNotFoundException("Shop not found for user: " + username);
+        }
+        Shop shop = shops.get(0); // Assuming one shop per owner
+
+        ProductDto createdProduct = productService.createProduct(productDto, imageFiles, shop.getId());
         return new ResponseEntity<>(createdProduct, HttpStatus.CREATED);
     }
+
     @PutMapping("/{id}")
     public ResponseEntity<?> updateProduct(@PathVariable Long id, @Validated @RequestBody ProductDto productDto) {
         try {
@@ -68,11 +111,7 @@ public class ProductController {
         List<ProductDto> products = productService.getAllProduct();
         return ResponseEntity.ok(products);
     }
-    @GetMapping("/getByTitle/{titleId}")
-    public ResponseEntity<List<ProductDto>> getProductsByTitleId(@PathVariable Long titleId) {
-        List<ProductDto> products = productService.getProductsByTitleId(titleId);
-        return ResponseEntity.ok(products);
-    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ProductDto> getProductById(@PathVariable Long id) {
         ProductDto productDto = productService.getProductById(id);
@@ -90,22 +129,30 @@ public class ProductController {
         List<ProductResponse> responseList = new ArrayList<>();
         for (Product product : products){
             responseList.add(ProductResponse.builder()
-                            .id(product.getId())
-                            .name(product.getName())
-                            .price(product.getPrice())
-                            .description(product.getDescription())
-                            .code(product.getDescription())
-                            .status(product.getStatus())
-                            .quantity(product.getQuantity())
-                            .brand(product.getBrand())
-                            .weight(product.getWeight())
-                            .situation(product.getSituation())
-                            .color(product.getColor())
-                            .overview(product.getOverview())
-                            .image(product.getImage())
+                    .id(product.getId())
+                    .name(product.getName())
+                    .price(product.getPrice())
+                    .description(product.getDescription())
+                    .code(product.getDescription())
+                    .status(product.getStatus())
+                    .brand(product.getBrand())
+                    .weight(product.getWeight())
+                    .situation(product.getSituation())
+                    .color(product.getColor())
+                    .overview(product.getOverview())
+                    .image(product.getImage())
                     .build());
         }
 
         return ResponseEntity.ok(responseList);
     }
+
+    @GetMapping("/products/{shopId}")
+    public ResponseEntity<Integer> getTotalProductsByShopId(@PathVariable Long shopId) {
+        List<Product> products = productService.getAllProductsByShopId(shopId);
+        int totalProducts = products.size();
+        return ResponseEntity.ok(totalProducts);
+    }
+
+
 }
