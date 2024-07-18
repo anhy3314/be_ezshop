@@ -121,6 +121,7 @@ public class OrderService implements IOrderService {
                 orderDetail.setName(product.getName());
                 orderDetail.setPrice(product.getPrice());
                 orderDetail.setProduct(product);
+                orderDetail.setShop(cartDetail.getShop());
                 orderDetails.add(orderDetail);
             }
             cart.setOrderId(order.getId());
@@ -259,13 +260,22 @@ public class OrderService implements IOrderService {
     @Override
     public Page<OrderDto> findByShopId(Long shopId, Pageable pageable) {
             try {
-                Page<Order> orders = orderRepository.findByUserId(shopId, pageable);
+                Page<Order> orders = orderRepository.findByShopId(shopId, pageable);
                 return orders.map(this::convertToOrderDto);
             } catch (Exception e) {
                 logger.error("Error finding orders by user ID", e);
                 throw new RuntimeException("Error finding orders by user ID", e);
             }
         }
+
+    @Override
+    public OrderDto updateOrderStatus(Long id, OrderStatus status) throws DataNotFoundException {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new DataNotFoundException("Order not found"));
+        order.setStatus(status);
+        orderRepository.save(order);
+        return orderConverter.toDto(order);
+    }
 
     @Override
     public List<OrderDto> findOrdersByOrderDateBetween(LocalDateTime startDate, LocalDateTime endDate) {

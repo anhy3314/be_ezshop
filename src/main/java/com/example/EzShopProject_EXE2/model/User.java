@@ -14,7 +14,7 @@ import java.util.Date;
 import java.util.List;
 
 @Entity
-@Table(name = "[dbo].[user]")
+@Table(name = "[user]")
 @Getter
 @Setter
 @AllArgsConstructor
@@ -54,7 +54,7 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
-    @Column(name = "status", nullable = true)
+    @Column(name = "status", nullable = true, columnDefinition = "boolean default true")
     private boolean status;
 
     @Column(name = "created_by", nullable = true)
