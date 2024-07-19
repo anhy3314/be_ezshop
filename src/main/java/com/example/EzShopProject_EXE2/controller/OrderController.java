@@ -25,7 +25,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("guest/api/orders")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = "http://ezshop.id.vn/")
 public class OrderController {
     private final IOrderService orderService;
     private final ICartDetailService cartDetailService;
