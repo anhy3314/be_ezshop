@@ -17,15 +17,16 @@ spring:
     username: CloudSA21aa3525@ez-shop
     password: AnHy221202
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    jpa:
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
       hibernate:
-        ddl-auto: update
-      show-sql: false
-      properties:
-        hibernate:
-          format_sql: true
-        database: mssql
-        database-platform: org.hibernate.dialect.SQLServer2022Dialect
+        format_sql: true
+      database: mssql
+      database-platform: org.hibernate.dialect.SQLServer2022Dialect
 
 springdoc:
   swagger-ui:

@@ -54,7 +54,7 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Gender gender;
 
-    @Column(name = "status", nullable = true, columnDefinition = "boolean default true")
+    @Column(name = "status", nullable = true)
     private boolean status;
 
     @Column(name = "created_by", nullable = true)
